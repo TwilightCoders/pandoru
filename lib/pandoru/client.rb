@@ -69,7 +69,7 @@ module Pandoru
           username: @partner_user,
           password: @partner_password,
           deviceModel: @device,
-          version: @transport.class::API_VERSION
+          version: (@transport.class.const_defined?(:API_VERSION) ? @transport.class::API_VERSION : "5")
         )
 
         @transport.set_partner(partner)
