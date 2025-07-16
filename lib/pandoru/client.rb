@@ -27,7 +27,7 @@ module Pandoru
       attr_reader :transport, :partner_user, :partner_password, :device, :default_audio_quality
       attr_accessor :username, :password
 
-      def initialize(transport, partner_user, partner_password, device, default_audio_quality: MED_AUDIO_QUALITY)
+      def initialize(transport, partner_user = nil, partner_password = nil, device = nil, default_audio_quality: MED_AUDIO_QUALITY)
         @transport = transport
         @partner_user = partner_user
         @partner_password = partner_password

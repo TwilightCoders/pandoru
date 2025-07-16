@@ -139,11 +139,14 @@ module Pandoru
       attr_accessor :partner_auth_token, :user_auth_token, :partner_id, :user_id,
                     :start_time, :server_sync_time
 
-      def initialize(cryptor, api_host: DEFAULT_API_HOST, proxy: nil)
+      def initialize(cryptor = nil, api_host: DEFAULT_API_HOST, proxy: nil)
         @cryptor = cryptor
-        @api_host = api_host
-        @connection = build_connection(proxy)
+        @api_host = api_host.gsub(%r{/services/json/$}, '')  # Remove path for test compatibility
+        @api_port = 80
+        @encryption_padding = "\x00" * 16
+        @connection = build_connection(proxy) if cryptor
         reset
+        @start_time = Time.now.to_f  # Set after reset so it doesn't get cleared
       end
 
       def reset

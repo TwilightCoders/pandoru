@@ -65,4 +65,5 @@ module Pandoru
   # Error aliases
   InvalidAuthTokenError = InvalidAuthToken
   PandoraException = PandoruError
+
 end
