@@ -172,7 +172,7 @@ RSpec.describe 'Error mappings' do
     end
 
     it 'returns APIError for unknown codes' do
-      expect(Pandoru.api_error_for_code(9999)).to eq(Pandoru::APIError)
+      expect(Pandoru.api_error_for_code(99999)).to eq(Pandoru::APIError)
       expect(Pandoru.api_error_for_code(-1)).to eq(Pandoru::APIError)
       expect(Pandoru.api_error_for_code(nil)).to eq(Pandoru::APIError)
     end
@@ -188,11 +188,11 @@ RSpec.describe 'Error mappings' do
     end
 
     it 'creates generic APIError for unknown codes' do
-      error = Pandoru.create_api_error('Unknown error', 9999)
+      error = Pandoru.create_api_error('Unknown error', 99999)
       
       expect(error).to be_a(Pandoru::APIError)
       expect(error.message).to eq('Unknown error')
-      expect(error.error_code).to eq(9999)
+      expect(error.error_code).to eq(99999)
     end
 
     it 'handles missing error code' do

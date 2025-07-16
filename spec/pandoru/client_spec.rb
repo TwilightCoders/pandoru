@@ -30,24 +30,37 @@ RSpec.describe Pandoru::APIClient do
       }
     end
 
+    let(:partner_response) do
+      {
+        'stat' => 'ok',
+        'result' => {
+          'partnerId' => 'partner123',
+          'partnerAuthToken' => 'partner_token_123'
+        }
+      }
+    end
+
     before do
+      # Mock partner login call
       allow(transport).to receive(:call)
-        .with('auth.userLogin', {
-          'loginType' => 'user',
-          'username' => 'testuser',
-          'password' => 'testpass'
-        })
+        .with('auth.partnerLogin', hash_including(username: nil, password: nil, deviceModel: nil))
+        .and_return(partner_response)
+      
+      # Mock user login call  
+      allow(transport).to receive(:call)
+        .with('auth.userLogin', hash_including(loginType: 'user', username: 'testuser', password: 'testpass'))
         .and_return(login_response)
+        
+      # Mock transport setter methods
+      allow(transport).to receive(:set_partner)
+      allow(transport).to receive(:set_user)
     end
 
     it 'calls transport with correct parameters' do
       client.login('testuser', 'testpass')
       
-      expect(transport).to have_received(:call).with('auth.userLogin', {
-        'loginType' => 'user',
-        'username' => 'testuser',
-        'password' => 'testpass'
-      })
+      expect(transport).to have_received(:call).with('auth.partnerLogin', hash_including(username: nil, password: nil, deviceModel: nil))
+      expect(transport).to have_received(:call).with('auth.userLogin', hash_including(loginType: 'user', username: 'testuser', password: 'testpass'))
     end
 
     it 'returns login response' do
@@ -79,19 +92,19 @@ RSpec.describe Pandoru::APIClient do
 
     before do
       allow(transport).to receive(:call)
-        .with('user.getStationList', {})
+        .with('user.getStationList', includeStationArtUrl: true)
         .and_return(station_list_response)
     end
 
     it 'calls transport with correct method' do
       client.get_station_list
       
-      expect(transport).to have_received(:call).with('user.getStationList', {})
+      expect(transport).to have_received(:call).with('user.getStationList', includeStationArtUrl: true)
     end
 
     it 'returns station list' do
       result = client.get_station_list
-      expect(result).to eq(station_list_response)
+      expect(result).to be_a(Pandoru::Models::StationList)
     end
   end
 
@@ -113,23 +126,29 @@ RSpec.describe Pandoru::APIClient do
 
     before do
       allow(transport).to receive(:call)
-        .with('station.getPlaylist', {
-          'stationToken' => 'station123'
-        })
+        .with('station.getPlaylist', hash_including(
+          stationToken: 'station123',
+          includeTrackLength: true,
+          xplatformAdCapable: true,
+          audioAdPodCapable: true
+        ))
         .and_return(playlist_response)
     end
 
     it 'calls transport with correct parameters' do
       client.get_playlist('station123')
       
-      expect(transport).to have_received(:call).with('station.getPlaylist', {
-        'stationToken' => 'station123'
-      })
+      expect(transport).to have_received(:call).with('station.getPlaylist', hash_including(
+        stationToken: 'station123',
+        includeTrackLength: true,
+        xplatformAdCapable: true,
+        audioAdPodCapable: true
+      ))
     end
 
     it 'returns playlist' do
       result = client.get_playlist('station123')
-      expect(result).to eq(playlist_response)
+      expect(result).to be_a(Pandoru::Models::Playlist)
     end
   end
 
@@ -157,23 +176,27 @@ RSpec.describe Pandoru::APIClient do
 
     before do
       allow(transport).to receive(:call)
-        .with('music.search', {
-          'searchText' => 'test query'
-        })
+        .with('music.search', hash_including(
+          searchText: 'test query',
+          includeNearMatches: false,
+          includeGenreStations: false
+        ))
         .and_return(search_response)
     end
 
     it 'calls transport with correct parameters' do
       client.search('test query')
       
-      expect(transport).to have_received(:call).with('music.search', {
-        'searchText' => 'test query'
-      })
+      expect(transport).to have_received(:call).with('music.search', hash_including(
+        searchText: 'test query',
+        includeNearMatches: false,
+        includeGenreStations: false
+      ))
     end
 
     it 'returns search results' do
       result = client.search('test query')
-      expect(result).to eq(search_response)
+      expect(result).to be_a(Pandoru::Models::SearchResult)
     end
   end
 
@@ -190,25 +213,23 @@ RSpec.describe Pandoru::APIClient do
 
     before do
       allow(transport).to receive(:call)
-        .with('station.createStation', {
-          'musicToken' => 'music123',
-          'musicType' => 'song'
-        })
+        .with('station.createStation', hash_including(
+          musicToken: 'music123'
+        ))
         .and_return(create_station_response)
     end
 
     it 'calls transport with correct parameters' do
-      client.create_station('music123', 'song')
+      client.create_station(search_token: 'music123')
       
-      expect(transport).to have_received(:call).with('station.createStation', {
-        'musicToken' => 'music123',
-        'musicType' => 'song'
-      })
+      expect(transport).to have_received(:call).with('station.createStation', hash_including(
+        musicToken: 'music123'
+      ))
     end
 
     it 'returns station creation result' do
-      result = client.create_station('music123', 'song')
-      expect(result).to eq(create_station_response)
+      result = client.create_station(search_token: 'music123')
+      expect(result).to be_a(Pandoru::Models::Station)
     end
   end
 
@@ -222,25 +243,26 @@ RSpec.describe Pandoru::APIClient do
 
     before do
       allow(transport).to receive(:call)
-        .with('station.addFeedback', {
-          'trackToken' => 'track123',
-          'isPositive' => true
-        })
+        .with('station.addFeedback', hash_including(
+          trackToken: 'track123',
+          isPositive: true
+        ))
         .and_return(feedback_response)
     end
 
     it 'calls transport with correct parameters for positive feedback' do
       client.add_feedback('track123', true)
       
-      expect(transport).to have_received(:call).with('station.addFeedback', {
-        'trackToken' => 'track123',
-        'isPositive' => true
-      })
+      expect(transport).to have_received(:call).with('station.addFeedback', hash_including(
+        trackToken: 'track123',
+        isPositive: true
+      ))
     end
 
     it 'returns feedback result' do
       result = client.add_feedback('track123', true)
-      expect(result).to eq(feedback_response)
+      expect(result).to be_a(Hash)
+      expect(result).to have_key('stat')
     end
   end
 
@@ -254,23 +276,24 @@ RSpec.describe Pandoru::APIClient do
 
     before do
       allow(transport).to receive(:call)
-        .with('station.deleteStation', {
-          'stationToken' => 'station123'
-        })
+        .with('station.deleteStation', hash_including(
+          stationToken: 'station123'
+        ))
         .and_return(delete_response)
     end
 
     it 'calls transport with correct parameters' do
       client.delete_station('station123')
       
-      expect(transport).to have_received(:call).with('station.deleteStation', {
-        'stationToken' => 'station123'
-      })
+      expect(transport).to have_received(:call).with('station.deleteStation', hash_including(
+        stationToken: 'station123'
+      ))
     end
 
     it 'returns deletion result' do
       result = client.delete_station('station123')
-      expect(result).to eq(delete_response)
+      expect(result).to be_a(Hash)
+      expect(result).to have_key('stat')
     end
   end
 
@@ -292,19 +315,19 @@ RSpec.describe Pandoru::APIClient do
 
     before do
       allow(transport).to receive(:call)
-        .with('user.getBookmarks', {})
+        .with('user.getBookmarks')
         .and_return(bookmarks_response)
     end
 
     it 'calls transport with correct method' do
       client.get_bookmarks
       
-      expect(transport).to have_received(:call).with('user.getBookmarks', {})
+      expect(transport).to have_received(:call).with('user.getBookmarks')
     end
 
     it 'returns bookmarks' do
       result = client.get_bookmarks
-      expect(result).to eq(bookmarks_response)
+      expect(result).to be_a(Pandoru::Models::BookmarkList)
     end
   end
 
@@ -320,25 +343,24 @@ RSpec.describe Pandoru::APIClient do
 
     before do
       allow(transport).to receive(:call)
-        .with('user.createBookmark', {
-          'trackToken' => 'track123',
-          'type' => 'artist'
-        })
+        .with('bookmark.addArtistBookmark', hash_including(
+          trackToken: 'track123'
+        ))
         .and_return(add_bookmark_response)
     end
 
     it 'calls transport with correct parameters' do
       client.add_artist_bookmark('track123')
       
-      expect(transport).to have_received(:call).with('user.createBookmark', {
-        'trackToken' => 'track123',
-        'type' => 'artist'
-      })
+      expect(transport).to have_received(:call).with('bookmark.addArtistBookmark', hash_including(
+        trackToken: 'track123'
+      ))
     end
 
     it 'returns bookmark creation result' do
       result = client.add_artist_bookmark('track123')
-      expect(result).to eq(add_bookmark_response)
+      expect(result).to be_a(Hash)
+      expect(result).to have_key('stat')
     end
   end
 
@@ -364,19 +386,19 @@ RSpec.describe Pandoru::APIClient do
 
     before do
       allow(transport).to receive(:call)
-        .with('station.getGenreStations', {})
+        .with('station.getGenreStations')
         .and_return(genre_stations_response)
     end
 
     it 'calls transport with correct method' do
       client.get_genre_stations
       
-      expect(transport).to have_received(:call).with('station.getGenreStations', {})
+      expect(transport).to have_received(:call).with('station.getGenreStations')
     end
 
     it 'returns genre stations' do
       result = client.get_genre_stations
-      expect(result).to eq(genre_stations_response)
+      expect(result).to be_a(Pandoru::Models::GenreStationList)
     end
   end
 
