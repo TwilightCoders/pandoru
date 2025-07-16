@@ -1,0 +1,113 @@
+#!/usr/bin/env ruby
+# bin/pandoru
+
+require 'optparse'
+require_relative '../lib/pandoru/project'
+require_relative '../lib/pandoru/processor'
+require_relative '../lib/pandoru/whisper'
+require_relative '../lib/pandoru/chunked_transcriber'
+require_relative '../lib/pandoru/diarizer'
+require_relative '../lib/pandoru/merger'
+require_relative '../lib/pandoru/dependencies'
+
+# Handle the merge subcommand
+if ARGV[0] == 'merge'
+  if ARGV.length != 4
+    puts "Usage: pandoru merge <speaker_file> <transcript_file> <output_file>"
+    exit 1
+  end
+  
+  speaker_file = ARGV[1]
+  transcript_file = ARGV[2]
+  output_file = ARGV[3]
+  
+  unless File.exist?(speaker_file)
+    puts "❌ Speaker file not found: #{speaker_file}"
+    exit 1
+  end
+  
+  unless File.exist?(transcript_file)
+    puts "❌ Transcript file not found: #{transcript_file}"
+    exit 1
+  end
+  
+  puts "🔄 Merging speaker data and transcript..."
+  Pandoru::Merger.merge(speaker_file, transcript_file, output_file)
+  puts "✅ Merged output saved to: #{output_file}"
+  exit 0
+end
+
+options = {
+  speakers: 1,
+  model: 'small',
+  merge: false,
+  hf_token: ENV['HUGGING_FACE_TOKEN'],
+  url: nil,
+  file: nil,
+  force: false,
+  verbose: false,
+  chunked: false,
+  max_segment_len: 10,
+  word_timestamps: false,
+  max_words_per_line: nil
+}
+
+OptionParser.new do |opts|
+  opts.banner = "Usage: transcribe [options]"
+  opts.on("--url URL", String, "YouTube or remote media URL") { |v| options[:url] = v }
+  opts.on("--file PATH", String, "Path to local media file") { |v| options[:file] = v }
+  opts.on("--speakers N", Integer, "Number of speakers (default: 1)") { |v| options[:speakers] = v }
+  opts.on("--model NAME", String, "Whisper model to use") { |v| options[:model] = v }
+  opts.on("--merge", "Merge transcript and diarization") { options[:merge] = true }
+  opts.on("--hf-token TOKEN", String, "Hugging Face token for pyannote") { |v| options[:hf_token] = v }
+  opts.on("--force", "Force reprocessing of audio") { options[:force] = true }
+  opts.on("--verbose", "Enable verbose output") { options[:verbose] = true }
+  opts.on("--chunked", "Use chunked transcription approach") { options[:chunked] = true }
+  opts.on("--max-segment-len N", Integer, "Maximum segment length for chunked transcription (default: 10)") { |v| options[:max_segment_len] = v }
+  opts.on("--word-timestamps", "Enable word-level timestamps for better speaker alignment") { options[:word_timestamps] = true }
+  opts.on("--max-words-per-line N", Integer, "Maximum words per VTT line for finer timestamps") { |v| options[:max_words_per_line] = v }
+end.parse!
+
+input = options[:url] || options[:file]
+abort("❌ Please provide either --url or --file") unless input
+
+# Check dependencies
+Pandoru::Dependencies.check!(%w[ffmpeg whisper yt-dlp])
+
+# Setup
+project = Pandoru::Project.new(input)
+puts "📁 Created project directory: #{project.dir}"
+
+# Process input
+Pandoru::Processor.prepare_audio(input, project, force: options[:force])
+
+# Run Whisper
+if options[:chunked]
+  transcript_file = Pandoru::ChunkedTranscriber.transcribe(project, options[:model], options[:max_segment_len])
+else
+  Pandoru::Whisper.transcribe(
+    project, 
+    options[:model], 
+    word_timestamps: options[:word_timestamps], 
+    max_words_per_line: options[:max_words_per_line]
+  )
+  transcript_file = nil  # Will be found later if needed
+end
+
+# Diarization only if speaker count > 1
+if options[:speakers] > 1
+  Pandoru::Diarizer.run_diarization(project, options[:hf_token], num_speakers: options[:speakers], verbose: options[:verbose])
+  speaker_file = File.join(project.dir, "speaker.txt")
+  
+  # Use the transcript file from chunked mode if available, otherwise find it
+  if transcript_file.nil?
+    # Look for VTT file first, then other formats
+    transcript_file = Dir.glob(File.join(project.dir, "*.{vtt,srt,txt}")).find { |f| f != speaker_file }
+  end
+  
+  output_file = File.join(project.dir, "merged.txt")
+  Pandoru::Merger.merge(speaker_file, transcript_file, output_file)
+  puts "✅ Merged output saved to: #{output_file}"
+end
+
+puts "🎉 Done. All files in: #{project.dir}"
