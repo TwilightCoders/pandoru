@@ -33,12 +33,12 @@ module Pandoru
     end
 
     class BookmarkList < Collection
-      def self.from_json(data, api_client = nil)
+      def self.from_json(api_client, data)
         instance = new(data, api_client)
         
         # Add song bookmarks
         if data['songs']
-          Bookmark.from_json_list(data['songs'], api_client).each do |bookmark|
+          Bookmark.from_json_list(api_client, data['songs']).each do |bookmark|
             instance << bookmark
           end
         end
@@ -47,7 +47,7 @@ module Pandoru
         if data['artists']
           data['artists'].each do |artist_data|
             artist_data['songName'] = nil unless artist_data.key?('songName')
-            bookmark = Bookmark.from_json(artist_data, api_client)
+            bookmark = Bookmark.from_json(api_client, artist_data)
             instance << bookmark
           end
         end

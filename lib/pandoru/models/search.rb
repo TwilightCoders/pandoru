@@ -31,13 +31,13 @@ module Pandoru
       field :near_matches_available, 'nearMatchesAvailable', type: :boolean
       field :explanation, 'explanation'
 
-      def self.from_json(data, api_client = nil)
+      def self.from_json(api_client, data)
         instance = new(data, api_client)
         instance.populate_from_json(data)
         
         # Add songs
         if data['songs']
-          SearchResultItem.from_json_list(data['songs'], api_client).each do |item|
+          SearchResultItem.from_json_list(api_client, data['songs']).each do |item|
             instance << item
           end
         end
@@ -51,7 +51,7 @@ module Pandoru
               'score' => artist_data['score'],
               'likelyMatch' => artist_data['likelyMatch']
             }
-            item = SearchResultItem.from_json(item_data, api_client)
+            item = SearchResultItem.from_json(api_client, item_data)
             instance << item
           end
         end
