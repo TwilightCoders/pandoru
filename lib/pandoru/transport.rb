@@ -67,6 +67,7 @@ module Pandoru
       end
 
       def decrypt(data, strip_padding: true)
+        return '' if data.empty?
         decoded_data = decode_hex(data)
         decrypted = @cipher.decrypt_string(decoded_data)
         strip_padding ? self.class.strip_padding(decrypted) : decrypted
@@ -90,6 +91,7 @@ module Pandoru
       end
 
       def decode_hex(data)
+        return '' if data.empty?
         [data.upcase].pack('H*')
       end
 
@@ -141,10 +143,49 @@ module Pandoru
 
       def initialize(cryptor = nil, api_host: DEFAULT_API_HOST, proxy: nil)
         @cryptor = cryptor
-        @api_host = api_host.gsub(%r{/services/json/$}, '')  # Remove path for test compatibility
-        @api_port = 80
+        api_host ||= DEFAULT_API_HOST
+        
+        # Parse host and path
+        if api_host.include?('/services/json')
+          # Extract host from full URL
+          if api_host.include?('://')
+            # Protocol://host format
+            uri_parts = api_host.split('/')
+            @api_host = uri_parts[2]
+          else
+            # host/path format
+            @api_host = api_host.split('/')[0]
+          end
+          @api_path = '/services/json/'
+        else
+          @api_host = api_host
+          @api_path = '/services/json/'
+        end
+        
+        # Set port and TLS based on URL
+        if api_host.include?('https:') || api_host.include?(':443') || api_host == 'tuner.pandora.com'
+          @api_port = 443
+          @api_tls = true
+        else
+          @api_port = 80  
+          @api_tls = false
+        end
+        
+        # Strip protocol from host for compatibility
+        @api_host = @api_host.gsub(%r{^https?://}, '')
+        # Remove path if it got included
+        @api_host = @api_host.split('/')[0]
+        
+        # Extract port from hostname if present
+        if @api_host.include?(':')
+          host_parts = @api_host.split(':')
+          @api_host = host_parts[0]
+          @api_port = host_parts[1].to_i
+          @api_tls = (@api_port == 443)
+        end
+        
         @encryption_padding = "\x00" * 16
-        @connection = build_connection(proxy) if cryptor
+        @connection = build_connection(proxy)
         reset
         @start_time = Time.now.to_f  # Set after reset so it doesn't get cleared
       end
@@ -170,7 +211,7 @@ module Pandoru
       end
 
       def auth_token
-        @user_auth_token || @partner_auth_token
+        @auth_token || @user_auth_token || @partner_auth_token
       end
 
       def sync_time
@@ -181,12 +222,23 @@ module Pandoru
       def call(method, **data)
         start_request(method)
 
-        url = build_url(method)
-        request_data = build_data(method, data)
         params = build_params(method)
+        url = build_url(method, params)
+        request_data = build_data(method, data)
         
         result = make_http_request(url, request_data, params)
         parse_response(result)
+      end
+
+      def test_connectivity
+        return false unless @connection
+        
+        begin
+          test_url = "#{@api_tls ? 'https' : 'http'}://#{@api_host}:#{@api_tls ? 443 : 80}"
+          test_url(test_url)
+        rescue StandardError
+          false
+        end
       end
 
       def test_url(url)
@@ -219,9 +271,50 @@ module Pandoru
         @start_time ||= Time.now.to_f
       end
 
-      def build_url(method)
+      def encrypt(data, key = nil)
+        if key
+          # Use provided key to create temporary blowfish cryptor
+          temp_cryptor = BlowfishCryptor.new(key)
+          temp_cryptor.encrypt(data)
+        elsif @cryptor
+          # Use existing cryptor's underlying blowfish cryptor
+          @cryptor.instance_variable_get(:@bf_out).encrypt(data)
+        else
+          raise ArgumentError, "No encryption key or cryptor available"
+        end
+      end
+
+      def decrypt(data, key = nil)
+        if key
+          # Use provided key to create temporary blowfish cryptor
+          temp_cryptor = BlowfishCryptor.new(key)
+          temp_cryptor.decrypt(data)
+        elsif @cryptor
+          # Use existing cryptor's underlying blowfish cryptor
+          @cryptor.instance_variable_get(:@bf_in).decrypt(data)
+        else
+          raise ArgumentError, "No decryption key or cryptor available"
+        end
+      end
+
+      def build_url(method, params = {})
         protocol = REQUIRE_TLS.include?(method) ? "https" : "http"
-        "#{protocol}://#{@api_host}"
+        port = @api_tls ? 443 : 80
+        base_url = "#{protocol}://#{@api_host}:#{port}#{@api_path}"
+        
+        # Add method parameter first
+        url_params = { method: method }.merge(params)
+        
+        # Add auth tokens if available
+        url_params[:auth_token] = auth_token if auth_token
+        url_params[:user_auth_token] = @user_auth_token if @user_auth_token
+        url_params[:partner_id] = @partner_id if @partner_id
+        url_params[:user_id] = @user_id if @user_id
+        
+        # Build query string
+        query_string = url_params.map { |k, v| "#{k}=#{v}" }.join('&')
+        
+        "#{base_url}?#{query_string}"
       end
 
       def build_params(method)
@@ -241,7 +334,7 @@ module Pandoru
         
         json_data = JSON.generate(remove_empty_values(data))
         
-        if NO_ENCRYPT.include?(method)
+        if NO_ENCRYPT.include?(method) || !@cryptor
           json_data
         else
           @cryptor.encrypt(json_data)
@@ -249,14 +342,20 @@ module Pandoru
       end
 
       def make_http_request(url, data, params)
-        response = @connection.post(url) do |req|
-          req.params = params
-          req.body = data
-          req.headers['Content-Type'] = 'application/json'
+        begin
+          response = @connection.post(url) do |req|
+            req.params = params
+            req.body = data
+            req.headers['Content-Type'] = 'application/json'
+          end
+          
+          response.raise_error unless response.success?
+          response.body
+        rescue Faraday::ConnectionFailed, Faraday::TimeoutError => e
+          # Let the retry middleware handle transient errors first
+          # If we get here, retries have been exhausted
+          raise NetworkError, "Network error: #{e.message}"
         end
-        
-        response.raise_error unless response.success?
-        response.body
       end
 
       def parse_response(result)
