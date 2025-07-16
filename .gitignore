@@ -1,0 +1,50 @@
+# Ignore Ruby-related files
+*.gem
+*.rbc
+.bundle/
+vendor/
+pkg/
+log/
+tmp/
+.byebug_history
+
+# Ignore editor and OS junk
+*.swp
+*~
+.DS_Store
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# Ignore compiled native extensions
+*.o
+*.so
+*.dylib
+
+# Ignore test coverage reports
+coverage/
+coverage*.json
+
+# Ignore project output
+projects/*
+
+# Allow this if you want example projects but not outputs
+!projects/.keep
+
+# Ignore Python cache if used for diarization
+__pycache__/
+*.pyc
+
+# Ignore virtualenvs if any
+.venv/
+env/
+venv/
+
+# Ignore Whisper or model downloads if cached
+whisper.cpp/models/*
+!whisper.cpp/models/.keep
+
+# Optional: ignore shell history
+.zsh_history
+.bash_history
