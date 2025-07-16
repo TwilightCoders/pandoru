@@ -9,10 +9,18 @@ module Pandoru
   end
 
   # Network related errors
-  class NetworkError < PandoruError; end
+  class NetworkError < PandoruError
+    def initialize(message = 'Network error')
+      super(message)
+    end
+  end
 
   # Configuration related errors  
-  class InvalidConfigError < PandoruError; end
+  class InvalidConfigError < PandoruError
+    def initialize(message = 'Invalid configuration')
+      super(message)
+    end
+  end
 
   # Parameter related errors
   class ParameterMissing < PandoruError; end
@@ -29,26 +37,26 @@ module Pandoru
 
   # Specific API errors
   class InvalidAuthToken < APIError
-    def initialize(message = 'Invalid auth token')
-      super(message, 1001)
+    def initialize(message = 'Invalid auth token', code = 1001)
+      super(message, code)
     end
   end
 
   class InvalidPartnerLogin < APIError
-    def initialize(message = 'Invalid partner login')
-      super(message, 1002)
+    def initialize(message = 'Invalid partner login', code = 1002)
+      super(message, code)
     end
   end
 
   class InvalidUserLogin < APIError
-    def initialize(message = 'Invalid user login')
-      super(message, 1012)
+    def initialize(message = 'Invalid user login', code = 1012)
+      super(message, code)
     end
   end
 
   class InvalidRequestError < APIError
-    def initialize(message = 'Invalid request')
-      super(message, 5)
+    def initialize(message = 'Invalid request', code = 5)
+      super(message, code)
     end
   end
 
@@ -115,8 +123,8 @@ module Pandoru
 
     # Create the exception class
     exception_class = Class.new(APIError) do
-      define_method(:initialize) do |extended_message = ""|
-        super("#{message}#{extended_message.empty? ? '' : ": #{extended_message}"}", code)
+      define_method(:initialize) do |extended_message = "", error_code = code|
+        super("#{message}#{extended_message.empty? ? '' : ": #{extended_message}"}", error_code)
       end
     end
 
