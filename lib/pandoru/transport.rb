@@ -15,6 +15,7 @@ require 'uri'
 require 'time'
 require 'crypt/blowfish'
 require 'base64'
+require 'cgi'
 
 module Pandoru
   module Transport
@@ -229,9 +230,9 @@ module Pandoru
 
         params = build_params(method)
         url = build_url(method, params)
-        request_data = build_data(method, data)
+        request_info = build_data(method, data)
 
-        result = make_http_request(url, request_data, params)
+        result = make_http_request(url, request_info[:data], params, request_info[:encrypted])
         parse_response(result)
       end
 
@@ -306,19 +307,17 @@ module Pandoru
         protocol = REQUIRE_TLS.include?(method) ? "https" : "http"
         port = @api_tls ? 443 : 80
         base_url = "#{protocol}://#{@api_host}:#{port}#{@api_path}"
-        
-        # Add method parameter first
-        url_params = { method: method }.merge(params)
-        
-        # Add auth tokens if available
-        url_params[:auth_token] = auth_token if auth_token
-        url_params[:user_auth_token] = @user_auth_token if @user_auth_token
-        url_params[:partner_id] = @partner_id if @partner_id
-        url_params[:user_id] = @user_id if @user_id
-        
-        # Build query string
-        query_string = url_params.map { |k, v| "#{k}=#{v}" }.join('&')
-        
+
+        # Build query string with parameters in specific order: method first, then others
+        query_parts = []
+        query_parts << "method=#{CGI.escape(method)}"
+        query_parts << "auth_token=#{CGI.escape(auth_token)}" if auth_token
+        query_parts << "user_auth_token=#{CGI.escape(@user_auth_token)}" if @user_auth_token
+        query_parts << "partner_id=#{CGI.escape(@partner_id.to_s)}" if @partner_id
+        query_parts << "user_id=#{CGI.escape(@user_id.to_s)}" if @user_id
+
+        query_string = query_parts.join('&')
+
         "#{base_url}?#{query_string}"
       end
 
@@ -340,18 +339,19 @@ module Pandoru
         json_data = JSON.generate(remove_empty_values(data))
 
         if NO_ENCRYPT.include?(method) || !@cryptor
-          json_data
+          { data: json_data, encrypted: false }
         else
-          @cryptor.encrypt(json_data)
+          { data: @cryptor.encrypt(json_data), encrypted: true }
         end
       end
 
-      def make_http_request(url, data, params)
+      def make_http_request(url, data, params, encrypted = false)
         begin
           response = @connection.post(url) do |req|
             # Don't set req.params since URL already has query string
             req.body = data
-            req.headers['Content-Type'] = 'application/json'
+            # Set Content-Type for JSON, but not for encrypted data
+            req.headers['Content-Type'] = 'application/json' unless encrypted
           end
           
           response.raise_error unless response.success?
