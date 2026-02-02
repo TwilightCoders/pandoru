@@ -69,7 +69,11 @@ module Pandoru
       def decrypt(data, strip_padding: true)
         return '' if data.empty?
         decoded_data = decode_hex(data)
-        decrypted = @cipher.decrypt_string(decoded_data)
+
+        # Decrypt block by block (decrypt_string only does one block!)
+        blocks = decoded_data.scan(/.{#{BLOCK_SIZE}}/m)
+        decrypted = blocks.map { |block| @cipher.decrypt_block(block) }.join
+
         strip_padding ? self.class.strip_padding(decrypted) : decrypted
       end
 
@@ -112,15 +116,16 @@ module Pandoru
       end
 
       def decrypt(data)
-        JSON.parse(@bf_out.decrypt(data))
+        JSON.parse(@bf_in.decrypt(data))
       end
 
       def decrypt_sync_time(data)
         decrypted = @bf_in.decrypt(data, strip_padding: false)
         # Extract the sync time (skip first 4 bytes, take all but last 2)
         # This matches Python's [4:-2] slice
-        time_bytes = decrypted[4...-2]
-        time_bytes.unpack1('L>')
+        time_str = decrypted[4...-2]
+        # The sync time is stored as an ASCII string of the Unix timestamp
+        time_str.to_i
       end
     end
 
@@ -225,7 +230,7 @@ module Pandoru
         params = build_params(method)
         url = build_url(method, params)
         request_data = build_data(method, data)
-        
+
         result = make_http_request(url, request_data, params)
         parse_response(result)
       end
@@ -331,9 +336,9 @@ module Pandoru
         data[:userAuthToken] = @user_auth_token if @user_auth_token
         data[:partnerAuthToken] = @partner_auth_token if @partner_auth_token && !@user_auth_token
         data[:syncTime] = sync_time
-        
+
         json_data = JSON.generate(remove_empty_values(data))
-        
+
         if NO_ENCRYPT.include?(method) || !@cryptor
           json_data
         else
@@ -344,7 +349,7 @@ module Pandoru
       def make_http_request(url, data, params)
         begin
           response = @connection.post(url) do |req|
-            req.params = params
+            # Don't set req.params since URL already has query string
             req.body = data
             req.headers['Content-Type'] = 'application/json'
           end
@@ -360,7 +365,7 @@ module Pandoru
 
       def parse_response(result)
         parsed = JSON.parse(result)
-        
+
         if parsed["stat"] == "ok"
           parsed["result"]
         else
