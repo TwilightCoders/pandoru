@@ -63,7 +63,11 @@ module Pandoru
 
       def encrypt(data)
         padded_data = add_padding(data)
-        encrypted = @cipher.encrypt_string(padded_data)
+
+        # Encrypt block by block for consistency with decrypt
+        blocks = padded_data.scan(/.{#{BLOCK_SIZE}}/m)
+        encrypted = blocks.map { |block| @cipher.encrypt_block(block) }.join
+
         encode_hex(encrypted)
       end
 
@@ -306,7 +310,9 @@ module Pandoru
       def build_url(method, params = {})
         protocol = REQUIRE_TLS.include?(method) ? "https" : "http"
         port = @api_tls ? 443 : 80
-        base_url = "#{protocol}://#{@api_host}:#{port}#{@api_path}"
+        # Only include port if it's non-standard
+        port_string = (protocol == "https" && port == 443) || (protocol == "http" && port == 80) ? "" : ":#{port}"
+        base_url = "#{protocol}://#{@api_host}#{port_string}#{@api_path}"
 
         # Build query string with parameters in specific order: method first, then others
         query_parts = []
@@ -349,9 +355,13 @@ module Pandoru
         begin
           response = @connection.post(url) do |req|
             # Don't set req.params since URL already has query string
-            req.body = data
+            # Ensure body is properly encoded as UTF-8 string
+            req.body = data.to_s.force_encoding('UTF-8')
             # Set Content-Type for JSON, but not for encrypted data
             req.headers['Content-Type'] = 'application/json' unless encrypted
+            # Match pydora's headers
+            req.headers['Accept'] = '*/*'
+            req.headers['Connection'] = 'keep-alive'
           end
           
           response.raise_error unless response.success?
