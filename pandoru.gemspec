@@ -10,7 +10,7 @@ Gem::Specification.new do |spec|
 
   spec.summary       = %q{Ruby client for the Pandora API - unofficial port of pydora}
   spec.description   = %q{A comprehensive Ruby client for the Pandora music streaming API, providing access to stations, playlists, search, and user management features.}
-  spec.homepage      = "https://github.com/TwilightCoders/pandoru."
+  spec.homepage      = "https://github.com/TwilightCoders/pandoru"
   spec.license       = "MIT"
 
   if spec.respond_to?(:metadata)
@@ -36,7 +36,10 @@ Gem::Specification.new do |spec|
   
   # JSON parsing
   spec.add_runtime_dependency 'json', '~> 2.0'
-  
+
+  # base64 was removed from Ruby's default gems in 3.4; transport.rb requires it
+  spec.add_runtime_dependency 'base64', '~> 0.2'
+
   # Development dependencies
   spec.add_development_dependency 'bundler', '~> 2.0'
   spec.add_development_dependency 'rake', '~> 13.0'

@@ -1,7 +1,8 @@
 PATH
   remote: .
   specs:
-    pandoru (2.3.1)
+    pandoru (0.1.0)
+      base64 (~> 0.2)
       crypt (~> 2.2)
       faraday (~> 2.0)
       faraday-retry (~> 2.0)

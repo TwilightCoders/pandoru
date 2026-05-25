@@ -1,3 +1,3 @@
 module Pandoru
-  VERSION = "2.3.1"  # Matching pydora version
+  VERSION = "0.1.0"
 end
