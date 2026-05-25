@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test (Ruby ${{ matrix.ruby }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby: ['3.1', '3.2', '3.3', '3.4']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby }}
+          bundler-cache: true
+      - name: Run tests
+        run: bundle exec rspec
+
+  quality:
+    name: Code quality (qlty)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: qltysh/qlty-action/install@v2
+      - name: qlty check (secrets + dependency vulnerabilities)
+        run: qlty check --all --no-fix
+
+  coverage:
+    name: Coverage
+    runs-on: ubuntu-latest
+    needs: test
+    permissions:
+      contents: read
+      id-token: write  # for Qlty Cloud OIDC upload (no stored secret needed)
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+          bundler-cache: true
+      - name: Run tests with coverage
+        env:
+          COVERAGE: '1'
+        run: bundle exec rspec
+      - name: Upload coverage to Qlty Cloud
+        # No-op until a Qlty Cloud project is linked; never fails the build.
+        continue-on-error: true
+        uses: qltysh/qlty-action/coverage@v2
+        with:
+          oidc: true
+          files: coverage/lcov.info
