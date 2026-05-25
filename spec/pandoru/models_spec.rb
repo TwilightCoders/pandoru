@@ -1,6 +1,6 @@
 require 'spec_helper'
 
-RSpec.describe Pandoru::Models::PandoraModel do
+RSpec.describe Pandoru::Models::Base do
   # Create a test model class for testing
   let(:test_model_class) do
     Class.new(described_class) do
@@ -32,8 +32,8 @@ RSpec.describe Pandoru::Models::PandoraModel do
     end
 
     it 'creates accessor methods' do
-      instance = test_model_class.new(mock_api_client)
-      
+      instance = test_model_class.new
+
       expect(instance).to respond_to(:name)
       expect(instance).to respond_to(:id)
       expect(instance).to respond_to(:creator)
@@ -99,8 +99,8 @@ RSpec.describe Pandoru::Models::PandoraModel do
 
   describe '#initialize' do
     it 'sets default values for fields' do
-      instance = test_model_class.new(mock_api_client)
-      
+      instance = test_model_class.new
+
       expect(instance.name).to be_nil
       expect(instance.id).to be_nil
       expect(instance.creator).to be_nil
