@@ -13,6 +13,7 @@
 - **Music Search**: Search for songs, artists, and albums
 - **User Interaction**: Thumbs up/down, bookmarks, sleep songs
 - **Feedback Management**: Add/remove track feedback
+- **Station Seeds & Genome Traits**: Inspect a station's seed artists/songs/genres and a track's Music-Genome focus traits (`explain_track`)
 - **Genre Exploration**: Browse and create stations from genre seeds
 - **Multiple Audio Qualities**: Support for low, medium, and high quality audio streams
 - **Ruby Idioms**: Built with Ruby best practices and idiomatic patterns

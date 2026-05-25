@@ -3,6 +3,7 @@ require_relative 'models/station'
 require_relative 'models/playlist'
 require_relative 'models/search'
 require_relative 'models/bookmark'
+require_relative 'models/track_explanation'
 
 module Pandoru
   module Models

@@ -242,7 +242,8 @@ module Pandoru
       end
 
       def explain_track(track_token)
-        call("track.explainTrack", trackToken: track_token)
+        data = call("track.explainTrack", trackToken: track_token)
+        Models::TrackExplanation.from_json(self, data)
       end
 
       def set_quick_mix(*station_ids)

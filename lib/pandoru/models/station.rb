@@ -2,6 +2,92 @@ require_relative '_base'
 
 module Pandoru
   module Models
+    # A single station seed — an artist, song, or genre the station was
+    # built from. Returned under the "music" key of a getStation response
+    # when includeExtendedAttributes is set.
+    class StationSeed < Base
+      field :seed_id, 'seedId'
+      field :music_token, 'musicToken'
+      field :pandora_id, 'pandoraId'
+      field :pandora_type, 'pandoraType'
+      field :genre_name, 'genreName'
+      field :song_name, 'songName'
+      field :artist_name, 'artistName'
+      field :art_url, 'artUrl'
+
+      def song?
+        !song_name.nil?
+      end
+
+      def artist?
+        song_name.nil? && !artist_name.nil?
+      end
+
+      def genre?
+        !genre_name.nil?
+      end
+
+      # Human-readable label, handy for clustering/debugging.
+      def label
+        return genre_name if genre?
+        [artist_name, song_name].compact.join(' - ')
+      end
+    end
+
+    # The seed sets for a station, grouped by kind.
+    class StationSeeds < Base
+      attr_accessor :genres, :songs, :artists
+
+      def self.from_json(api_client, data)
+        return nil unless data
+        instance = new(data, api_client)
+        instance.genres  = StationSeed.from_json_list(api_client, data['genres'])
+        instance.songs   = StationSeed.from_json_list(api_client, data['songs'])
+        instance.artists = StationSeed.from_json_list(api_client, data['artists'])
+        instance
+      end
+
+      # All seeds flattened into one array.
+      def all
+        Array(genres) + Array(artists) + Array(songs)
+      end
+    end
+
+    # A single thumbs-up/down on a song.
+    class SongFeedback < Base
+      field :feedback_id, 'feedbackId'
+      field :song_identity, 'songIdentity'
+      field :is_positive, 'isPositive', type: :boolean
+      field :pandora_id, 'pandoraId'
+      field :album_art_url, 'albumArtUrl'
+      field :music_token, 'musicToken'
+      field :song_name, 'songName'
+      field :artist_name, 'artistName'
+      field :pandora_type, 'pandoraType'
+      date_field :date_created, 'dateCreated'
+
+      def positive?
+        is_positive == true
+      end
+    end
+
+    # A station's feedback (thumbs) returned under the "feedback" key of an
+    # extended getStation response.
+    class StationFeedback < Base
+      attr_accessor :thumbs_up, :thumbs_down
+      field :total_thumbs_up, 'totalThumbsUp'
+      field :total_thumbs_down, 'totalThumbsDown'
+
+      def self.from_json(api_client, data)
+        return nil unless data
+        instance = new(data, api_client)
+        instance.populate_from_json(data)
+        instance.thumbs_up   = SongFeedback.from_json_list(api_client, data['thumbsUp'])
+        instance.thumbs_down = SongFeedback.from_json_list(api_client, data['thumbsDown'])
+        instance
+      end
+    end
+
     class Station < Base
       field :station_id, 'stationId'
       field :station_name, 'stationName' 
@@ -24,10 +110,44 @@ module Pandoru
       field :thumb_count, 'thumbCount'
       date_field :date_created, 'dateCreated'
 
+      # Populated only by getStation with includeExtendedAttributes; nil for
+      # stations returned in a getStationList response.
+      attr_accessor :seeds, :feedback
+
       # Convenience aliases
       alias_method :id, :station_id
       alias_method :name, :station_name
       alias_method :token, :station_token
+
+      def self.from_json(api_client, data)
+        station = super
+        return station unless station && data
+        station.seeds    = StationSeeds.from_json(api_client, data['music'])
+        station.feedback = StationFeedback.from_json(api_client, data['feedback'])
+        station
+      end
+
+      # Seed accessors that are always safe to call (empty array when the
+      # station was loaded without extended attributes).
+      def seed_artists
+        seeds&.artists || []
+      end
+
+      def seed_songs
+        seeds&.songs || []
+      end
+
+      def seed_genres
+        seeds&.genres || []
+      end
+
+      def thumbs_up
+        feedback&.thumbs_up || []
+      end
+
+      def thumbs_down
+        feedback&.thumbs_down || []
+      end
 
       def get_playlist
         return nil unless @api_client
