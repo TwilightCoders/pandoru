@@ -4,6 +4,8 @@ require_relative 'pandoru/transport'
 require_relative 'pandoru/client'
 require_relative 'pandoru/client_builder'
 require_relative 'pandoru/models'
+require_relative 'pandoru/secret_store'
+require_relative 'pandoru/credentials'
 require 'pathname'
 require 'logger'
 

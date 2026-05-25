@@ -1,0 +1,44 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Store Pandora credentials in the OS secret store (macOS Keychain, Linux
+# libsecret) so no password lives in a plaintext file. The client reads them at
+# runtime via Pandoru::Credentials.
+#
+#   pandoru-login            # prompt + store
+#   pandoru-login --delete   # remove the stored item
+
+$LOAD_PATH.unshift File.expand_path('../lib', __dir__)
+
+require 'pandoru'
+require 'io/console'
+
+store = Pandoru::SecretStore
+
+unless store.available?
+  warn "No OS secret store available on this platform (#{store.backend_name})."
+  warn 'Fall back to a credentials file — see README "Credentials".'
+  exit 1
+end
+
+if ARGV[0] == '--delete'
+  removed = store.delete
+  puts removed ? 'Removed Pandora credentials from the secret store.' : 'Nothing stored.'
+  exit removed ? 0 : 1
+end
+
+print 'Pandora email/username: '
+username = $stdin.gets&.strip
+abort 'Aborted — no username.' if username.nil? || username.empty?
+
+print 'Password (hidden): '
+password = $stdin.noecho(&:gets)&.chomp
+puts
+abort 'Aborted — no password.' if password.nil? || password.empty?
+
+if store.store(username, password)
+  puts "✓ Stored in #{store.backend_name} (account: #{username})."
+  puts 'No password on disk — the client reads it at runtime.'
+else
+  abort 'Failed to store credentials in the secret store.'
+end
