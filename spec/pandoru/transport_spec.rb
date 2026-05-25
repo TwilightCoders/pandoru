@@ -47,8 +47,11 @@ RSpec.describe Pandoru::APITransport do
 
   describe '#build_url' do
     it 'builds API URL correctly' do
-      result = transport.send(:build_url, 'method_name', { param: 'value' })
-      expect(result).to match(%r{http://tuner\.pandora\.com:80/services/json/\?method=method_name&.*})
+      result = transport.send(:build_url, 'method_name')
+      # Standard http/80 port is omitted, and with no auth tokens set yet
+      # `method` is the only query parameter. This matches the URL the live
+      # API actually accepts.
+      expect(result).to eq('http://tuner.pandora.com/services/json/?method=method_name')
     end
 
     it 'includes auth token when provided' do
