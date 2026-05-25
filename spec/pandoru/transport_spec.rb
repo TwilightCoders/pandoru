@@ -54,6 +54,15 @@ RSpec.describe Pandoru::APITransport do
       expect(result).to eq('http://tuner.pandora.com/services/json/?method=method_name')
     end
 
+    it 'uses https for every method on a TLS-configured host, not just REQUIRE_TLS ones' do
+      tls_transport = described_class.new(nil, api_host: 'https://tuner.pandora.com/services/json/')
+      # user.getStationList is NOT in REQUIRE_TLS but must still be https — the
+      # old downgrade built http://host:443 (plaintext to the TLS port → EOF).
+      result = tls_transport.send(:build_url, 'user.getStationList')
+      expect(result).to eq('https://tuner.pandora.com/services/json/?method=user.getStationList')
+      expect(result).not_to include(':443')
+    end
+
     it 'includes auth token when provided' do
       transport.instance_variable_set(:@auth_token, 'test_token')
       result = transport.send(:build_url, 'method_name', {})

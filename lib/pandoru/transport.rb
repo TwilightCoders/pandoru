@@ -308,7 +308,12 @@ module Pandoru
       end
 
       def build_url(method, params = {})
-        protocol = REQUIRE_TLS.include?(method) ? "https" : "http"
+        # Pandora now requires TLS on every endpoint, so follow the transport's
+        # configured scheme uniformly. The old per-method REQUIRE_TLS downgrade
+        # built http://host:443 for non-listed methods (e.g. user.getStationList)
+        # — plaintext to the TLS port, which Pandora drops (EOF). Protocol and
+        # port must agree.
+        protocol = @api_tls ? "https" : "http"
         port = @api_tls ? 443 : 80
         # Only include port if it's non-standard
         port_string = (protocol == "https" && port == 443) || (protocol == "http" && port == 80) ? "" : ":#{port}"
