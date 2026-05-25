@@ -25,7 +25,7 @@ Gem::Specification.new do |spec|
   spec.test_files    = spec.files.grep(%r{^(test|spec|features)/})
   spec.require_paths = ['lib']
 
-  spec.required_ruby_version = '>= 2.7'
+  spec.required_ruby_version = '>= 3.0'
 
   # HTTP and networking
   spec.add_runtime_dependency 'faraday', '~> 2.0'
@@ -47,4 +47,8 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency 'webmock', '~> 3.0'
   spec.add_development_dependency 'pry-byebug'
   spec.add_development_dependency 'vcr', '~> 6.0'
+
+  # Coverage (emitted as lcov for Qlty Cloud; only active when COVERAGE is set)
+  spec.add_development_dependency 'simplecov', '~> 0.22'
+  spec.add_development_dependency 'simplecov-lcov', '~> 0.8'
 end
