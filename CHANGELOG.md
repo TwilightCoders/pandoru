@@ -4,6 +4,13 @@ All notable changes to this project are documented here. The format is based
 on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- `Station#add_seed` passed its arguments to `add_music` in the wrong order
+  (station and music tokens swapped), producing a malformed `station.addMusic`
+  request. It now calls `add_music(music_token, token)`.
+
 ## [0.1.0] - 2026-05-25
 
 Initial public release. A Ruby port of pydora (tracking upstream `pydora 2.3.1`)

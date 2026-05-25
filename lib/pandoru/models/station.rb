@@ -169,7 +169,8 @@ module Pandoru
 
       def add_seed(music_token)
         return false unless allow_add_music && @api_client
-        @api_client.add_music(token, music_token)
+        # add_music expects (music_token, station_token) — music token first.
+        @api_client.add_music(music_token, token)
         true
       end
     end

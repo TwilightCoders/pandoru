@@ -205,6 +205,22 @@ RSpec.describe Pandoru::Models::Station do
       expect(station.thumbs_down.first).not_to be_positive
     end
   end
+
+  describe '#add_seed' do
+    it 'calls add_music with the music token first, station token second' do
+      station = described_class.from_json(mock_api_client, station_data.merge('allowAddMusic' => true))
+      # add_music(music_token, station_token) — order matters; a swap sends the
+      # station token as musicToken and vice versa.
+      expect(mock_api_client).to receive(:add_music).with('music-token-xyz', 'token456')
+      expect(station.add_seed('music-token-xyz')).to eq(true)
+    end
+
+    it 'is a no-op when the station disallows adding music' do
+      station = described_class.from_json(mock_api_client, station_data.merge('allowAddMusic' => false))
+      expect(mock_api_client).not_to receive(:add_music)
+      expect(station.add_seed('music-token-xyz')).to eq(false)
+    end
+  end
 end
 
 RSpec.describe Pandoru::Models::TrackExplanation do
