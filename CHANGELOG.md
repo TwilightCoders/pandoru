@@ -8,9 +8,9 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 - `Pandoru::Credentials.resolve` — tiered credential resolution: explicit args →
-  `PANDORA_USERNAME`/`PANDORA_PASSWORD` env → OS secret store → JSON file at
-  `$PANDORU_CREDENTIALS` / `~/.config/pandoru/credentials.json` (first complete
-  pair wins; blank values fall through).
+  `PANDORA_USERNAME`/`PANDORA_PASSWORD` env → OS secret store → config files
+  (`$PANDORU_CREDENTIALS` / `~/.config/pandoru/credentials.json`, plus pianobar
+  and pydora configs for migration). First complete pair wins; blanks fall through.
 - `Pandoru::SecretStore` — portable OS secret storage (macOS Keychain, Linux
   libsecret; Windows falls back to the file tier) so the password need not live
   in plaintext.
