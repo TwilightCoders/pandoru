@@ -2,6 +2,7 @@
 *.gem
 *.rbc
 .bundle/
+.rspec_status
 vendor/
 pkg/
 log/
@@ -13,6 +14,7 @@ tmp/
 *~
 .DS_Store
 .idea/
+*.code-workspace
 .vscode/
 *.sublime-project
 *.sublime-workspace
