@@ -1,8 +1,13 @@
+[![License        ](https://img.shields.io/github/license/TwilightCoders/pandoru.svg)]()
+[![Version        ](https://img.shields.io/gem/v/pandoru.svg)](https://rubygems.org/gems/pandoru)
+[![Build Status   ](https://travis-ci.org/TwilightCoders/pandoru.svg)](https://travis-ci.org/TwilightCoders/pandoru)
+[![Maintainability](https://qlty.sh/gh/TwilightCoders/projects/pandoru/maintainability.svg)](https://qlty.sh/gh/TwilightCoders/projects/pandoru)
+[![Code Coverage  ](https://qlty.sh/gh/TwilightCoders/projects/pandoru/coverage.svg)](https://qlty.sh/gh/TwilightCoders/projects/pandoru)
 # Pandoru
 
 **Pandoru** is a Ruby port of the Python `pydora` library, providing a comprehensive client for the unofficial Pandora music streaming API. This gem allows you to interact with Pandora programmatically to manage stations, get playlists, search for music, and control playback.
 
-> **Note**: This is an unofficial API client. Use at your own risk and respect Pandora's terms of service.
+> ⚠️ **Note**: This is an unofficial API client. Use at your own risk and respect Pandora's terms of service.
 
 ---
 
@@ -260,4 +265,4 @@ This Ruby gem is a port of the excellent [pydora](https://github.com/mcrute/pydo
 
 ## Disclaimer
 
-This project is not affiliated with or endorsed by Pandora Media, Inc. Use of this library may violate Pandora's Terms of Service. Use at your own risk.
+> ⚠️ This project is not affiliated with or endorsed by Pandora Media, Inc. Use of this library may violate Pandora's Terms of Service. Use at your own risk.
