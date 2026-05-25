@@ -53,6 +53,11 @@ jobs:
         env:
           COVERAGE: '1'
         run: bundle exec rspec
+      - name: Normalize coverage paths
+        # simplecov-lcov emits "SF:./lib/..."; strip the leading ./ so Qlty can
+        # map each entry to a repo file. The ./ prefix otherwise resolves to
+        # nothing and the whole report reads as 0% coverage.
+        run: sed -i 's#^SF:\./#SF:#' coverage/lcov.info
       - name: Upload coverage to Qlty Cloud
         # No-op until a Qlty Cloud project is linked; never fails the build.
         continue-on-error: true
